@@ -1,4 +1,4 @@
-use super::games::Game;
+use super::games;
 use config;
 use config::Config;
 use lazy_static::lazy_static;
