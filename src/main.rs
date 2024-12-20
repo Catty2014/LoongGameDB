@@ -33,12 +33,17 @@ struct Test {
 }
 
 #[get("/")]
-async fn hello() -> impl Responder {
-    let _data = Test {
-        code: 200,
-        message: "Hello!".to_string(),
-    };
-    HttpResponse::Ok().json(_data)
+async fn hello(user: Option<Identity>) -> impl Responder {
+    if let Some(user) = user {
+        HttpResponse::Ok().body(format!("Hello {}!", user.id().unwrap()))
+    } else {
+        HttpResponse::Ok().body("Hello anonymous user!")
+    }
+    // let _data = Test {
+    //     code: 200,
+    //     message: "Hello!".to_string(),
+    // };
+    // HttpResponse::Ok().json(_data)
 }
 
 async fn manual_hello() -> impl Responder {
@@ -47,6 +52,7 @@ async fn manual_hello() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
     let secret = settings.get_string("ACTIX_SECRET").unwrap();
     let secret = Key::from(secret.as_bytes());
     let db = Database::connect(settings.get_string("DATABASE_URL").unwrap()).await;
@@ -58,9 +64,11 @@ async fn main() -> std::io::Result<()> {
                 secret.clone(),
             ))
             .service(hello)
-            .service(login::index)
-            .service(login::login)
-            .service(login::logout)
+            .service(login::oauth_login)
+            .service(login::oauth_callback)
+            // .service(login::index)
+            // .service(login::login)
+            // .service(login::logout)
             .route("/hey", web::get().to(manual_hello))
     })
     .bind(("127.0.0.1", 8080))?
