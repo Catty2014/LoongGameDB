@@ -1,4 +1,4 @@
-use super::games;
+use super::game;
 use config;
 use config::Config;
 use lazy_static::lazy_static;
@@ -16,7 +16,7 @@ lazy_static! {
         .build()
         .unwrap();
 }
-pub fn sonic_write_game(game: Game) -> Result<(), ()> {
+pub fn sonic_write_game(game: game::Model) -> Result<(), ()> {
     // TODO: 用r2d2重写该部分以加快效率
     let channel = IngestChannel::start(
         settings.get_string("SONICDB_URL").unwrap(),

@@ -66,7 +66,7 @@ impl sea_orm::sea_query::ValueType for Compatibility {
 pub struct Model {
     pub name: String,
     #[sea_orm(primary_key)]
-    pub id: u64,
+    pub id: u32,
     pub supportlevel: SupportLevel,
     pub compat: Compatibility,
 }
@@ -80,7 +80,7 @@ impl Model {
     /// Creates a new [`Model`].
     fn new(
         name: String,
-        id: u64,
+        id: u32,
         support_level: SupportLevel,
         compatibility: Compatibility,
     ) -> Model {
@@ -119,11 +119,19 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
+    use crate::game::Entity;
     use enumflags2::make_bitflags;
     use enumflags2::BitFlags;
+    use sea_orm::schema;
+    use sea_orm::ActiveModelTrait;
+    use sea_orm::ActiveValue;
+    use sea_orm::ConnectionTrait;
+    use sea_orm::Database;
+    use sea_orm::TryIntoModel;
 
     use crate::entity::game::CompatibilityLayerItem;
 
+    use super::ActiveModel;
     use super::Compatibility;
     use super::Model;
     use super::SupportLevel;
@@ -200,5 +208,26 @@ mod tests {
         };
         let grade = game.grading();
         assert_eq!(grade, "DD");
+    }
+
+    #[tokio::test]
+    async fn games_write_db() {
+        let db = Database::connect("sqlite:///tmp/test.db?mode=rwc")
+            .await
+            .unwrap();
+        let game = ActiveModel {
+            name: ActiveValue::Set("Test 1".to_string()),
+            id: ActiveValue::Set(1),
+            supportlevel: ActiveValue::Set(SupportLevel::PERFECT),
+            compat: ActiveValue::Set(Compatibility {
+                0: BitFlags::default(),
+            }),
+        };
+        let builder = db.get_database_backend();
+        let schema = schema::Schema::new(builder);
+        db.execute(builder.build(&schema.create_table_from_entity(Entity)))
+            .await
+            .unwrap();
+        let game = game.insert(&db).await.unwrap();
     }
 }

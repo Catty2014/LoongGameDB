@@ -2,8 +2,9 @@ mod entity {
     pub mod game;
 }
 use entity::game;
-// mod sonic;
+mod action;
 mod login;
+mod sonic;
 use actix_identity::{Identity, IdentityMiddleware};
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{
@@ -27,9 +28,10 @@ lazy_static! {
 }
 
 #[derive(Serialize)]
-struct Test {
-    code: i32,
+struct Response {
+    code: u32,
     message: String,
+    version: Option<String>,
 }
 
 #[get("/")]
@@ -39,15 +41,16 @@ async fn hello(user: Option<Identity>) -> impl Responder {
     } else {
         HttpResponse::Ok().body("Hello anonymous user!")
     }
-    // let _data = Test {
-    //     code: 200,
-    //     message: "Hello!".to_string(),
-    // };
-    // HttpResponse::Ok().json(_data)
 }
 
-async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
+#[get("/version")]
+async fn version() -> impl Responder {
+    let response = Response {
+        code: 200,
+        message: "OK".to_string(),
+        version: Some(settings.get_string("VERSION").unwrap()),
+    };
+    HttpResponse::Ok().json(response)
 }
 
 #[actix_web::main]
@@ -64,12 +67,10 @@ async fn main() -> std::io::Result<()> {
                 secret.clone(),
             ))
             .service(hello)
+            .service(version)
             .service(login::oauth_login)
             .service(login::oauth_callback)
-            // .service(login::index)
-            // .service(login::login)
-            // .service(login::logout)
-            .route("/hey", web::get().to(manual_hello))
+            .service(login::logout)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
