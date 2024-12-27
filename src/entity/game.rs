@@ -1,7 +1,8 @@
 use enumflags2::{bitflags, BitFlags};
 use sea_orm::entity::prelude::*;
 use sea_orm::sea_query::Value;
-#[derive(PartialEq, Eq, Debug, Clone, DeriveActiveEnum, EnumIter)]
+use serde::{Deserialize, Serialize};
+#[derive(PartialEq, Eq, Debug, Clone, DeriveActiveEnum, EnumIter, Deserialize, Serialize)]
 #[sea_orm(rs_type = "u8", db_type = "Integer")]
 pub enum SupportLevel {
     PERFECT = 0,
@@ -13,7 +14,7 @@ pub enum SupportLevel {
 
 #[bitflags]
 #[repr(u32)]
-#[derive(PartialEq, Eq, DeriveActiveEnum, EnumIter, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, DeriveActiveEnum, EnumIter, Debug, Clone, Copy, Deserialize, Serialize)]
 #[sea_orm(rs_type = "u32", db_type = "Integer")]
 pub enum CompatibilityLayerItem {
     WINE = 1,
@@ -28,6 +29,27 @@ pub struct Compatibility(pub BitFlags<CompatibilityLayerItem>);
 impl std::convert::From<Compatibility> for Value {
     fn from(source: Compatibility) -> Self {
         source.0.bits().into()
+    }
+}
+
+impl<'de> Deserialize<'de> for Compatibility {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value: u32 = serde::Deserialize::deserialize(deserializer)?;
+        let layer: BitFlags<CompatibilityLayerItem> = BitFlags::from_bits(value).unwrap();
+        let result = Compatibility { 0: layer };
+        Ok(result)
+    }
+}
+
+impl Serialize for Compatibility {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u32(self.0.bits())
     }
 }
 
@@ -61,7 +83,7 @@ impl sea_orm::sea_query::ValueType for Compatibility {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "games")]
 pub struct Model {
     pub name: String,

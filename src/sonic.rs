@@ -16,8 +16,18 @@ lazy_static! {
         .build()
         .unwrap();
 }
+
+pub fn sonic_connection_test() -> bool {
+    let channel = IngestChannel::start(
+        settings.get_string("SONICDB_URL").unwrap(),
+        settings.get_string("SONICDB_PASSWORD").unwrap(),
+    );
+    dbg!(&channel);
+    channel.is_ok()
+}
+
 pub fn sonic_write_game(game: game::Model) -> Result<(), ()> {
-    // TODO: 用r2d2重写该部分以加快效率
+    // PERFORMANCE: 用r2d2重写该部分以加快效率
     let channel = IngestChannel::start(
         settings.get_string("SONICDB_URL").unwrap(),
         settings.get_string("SONICDB_PASSWORD").unwrap(),
@@ -32,7 +42,7 @@ pub fn sonic_write_game(game: game::Model) -> Result<(), ()> {
 }
 
 pub fn sonic_read_game(name: String) -> Result<Vec<u64>, String> {
-    // TODO: 用r2d2重写以加快效率
+    // PERFORMANCE: 用r2d2重写该部分以加快效率
     let channel = SearchChannel::start(
         settings.get_string("SONICDB_URL").unwrap(),
         settings.get_string("SONICDB_PASSWORD").unwrap(),
@@ -51,5 +61,49 @@ pub fn sonic_read_game(name: String) -> Result<Vec<u64>, String> {
             .map(|i| i.parse::<u64>().ok().unwrap())
             .collect()),
         Err(error) => Err("Failed while reading from sonic:".to_owned() + &error.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use enumflags2::make_bitflags;
+    use game::CompatibilityLayerItem;
+    // use sea_orm::IntoActiveModel;
+
+    use super::*;
+
+    #[test]
+    fn test_sonic_connection_test() {
+        assert!(sonic_connection_test());
+    }
+
+    #[test]
+    fn test_sonic_write_game() {
+        let game = game::Model {
+            id: 1,
+            name: "test".to_owned(),
+            supportlevel: game::SupportLevel::GREAT,
+            compat: game::Compatibility {
+                0: make_bitflags!(CompatibilityLayerItem::{LATX}),
+            },
+        };
+        sonic_write_game(game).unwrap();
+    }
+
+    #[test]
+    fn test_sonic_read_game() {
+        let game = game::Model {
+            id: 1,
+            name: "Test Music 001".to_owned(),
+            supportlevel: game::SupportLevel::GREAT,
+            compat: game::Compatibility {
+                0: make_bitflags!(CompatibilityLayerItem::{LATX}),
+            },
+        };
+        sonic_write_game(game).unwrap();
+        let games = sonic_read_game("Test Music 001".to_owned()).unwrap();
+        dbg!(&games);
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0], 1);
     }
 }

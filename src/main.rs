@@ -1,3 +1,7 @@
+use crate::game::Entity;
+use log::{debug, error, info, warn};
+use sea_orm::schema;
+use sea_orm::ConnectionTrait;
 mod entity {
     pub mod game;
 }
@@ -53,12 +57,42 @@ async fn version() -> impl Responder {
     HttpResponse::Ok().json(response)
 }
 
+async fn init() -> Result<(), ()> {
+    env_logger::init();
+    debug!("Initializing database...");
+    let db = Database::connect(settings.get_string("DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    let builder = db.get_database_backend();
+    let schema = schema::Schema::new(builder);
+    let result = db
+        .execute(builder.build(&schema.create_table_from_entity(Entity)))
+        .await;
+    // dbg!(&result);
+    match result {
+        Ok(_t) => {}
+        Err(e) => {
+            if e.to_string().contains("already exists") {
+                info!("Table already exists, skipping table creation...");
+            } else {
+                error!("Failed to create table!");
+                dbg!(e);
+                return Err(());
+            }
+        }
+    };
+    debug!("Testing SonicDB connection...");
+    if !sonic::sonic_connection_test() {
+        warn!("SonicDB connection test failed, skipping...");
+    }
+    Ok(())
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init();
+    init().await.unwrap();
     let secret = settings.get_string("ACTIX_SECRET").unwrap();
     let secret = Key::from(secret.as_bytes());
-    let db = Database::connect(settings.get_string("DATABASE_URL").unwrap()).await;
     HttpServer::new(move || {
         App::new()
             .wrap(IdentityMiddleware::default())
@@ -71,6 +105,9 @@ async fn main() -> std::io::Result<()> {
             .service(login::oauth_login)
             .service(login::oauth_callback)
             .service(login::logout)
+            .service(action::add)
+            .service(action::info)
+            .service(action::search)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

@@ -1,5 +1,6 @@
 VERSION = "0.0.1"
 
 DATABASE_URL = "sqlite://test.db?mode=rwc"
+SONICDB_URL = "localhost:1491"
 OAUTH_REDIRECT_URL = "http://localhost:8080/login/callback"
 OAUTH_RESOURCE_URL = "https://api.github.com/user"
