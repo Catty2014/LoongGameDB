@@ -1,27 +1,23 @@
 use crate::game::Entity;
+use crate::response_body::VersionResponse;
 use log::{debug, error, info, warn};
 use sea_orm::schema;
 use sea_orm::ConnectionTrait;
 mod entity {
     pub mod game;
 }
+mod response_body;
+mod response_code;
 use entity::game;
 mod action;
 mod login;
 mod sonic;
 use actix_identity::{Identity, IdentityMiddleware};
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{
-    cookie::Key,
-    get, post,
-    web::{self, Json},
-    App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
-};
+use actix_web::{cookie::Key, get, App, HttpResponse, HttpServer, Responder};
 use config::Config;
 use lazy_static::lazy_static;
 use sea_orm::Database;
-use serde::Deserialize;
-use serde_derive::Serialize;
 
 lazy_static! {
     static ref settings: Config = Config::builder()
@@ -29,13 +25,6 @@ lazy_static! {
         .add_source(config::File::with_name(".secret.toml"))
         .build()
         .unwrap();
-}
-
-#[derive(Serialize)]
-struct Response {
-    code: u32,
-    message: String,
-    version: Option<String>,
 }
 
 #[get("/")]
@@ -49,7 +38,7 @@ async fn hello(user: Option<Identity>) -> impl Responder {
 
 #[get("/version")]
 async fn version() -> impl Responder {
-    let response = Response {
+    let response = VersionResponse {
         code: 200,
         message: "OK".to_string(),
         version: Some(settings.get_string("VERSION").unwrap()),
@@ -108,6 +97,7 @@ async fn main() -> std::io::Result<()> {
             .service(action::add)
             .service(action::info)
             .service(action::search)
+            .service(action::delete)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

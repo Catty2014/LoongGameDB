@@ -26,7 +26,7 @@ pub fn sonic_connection_test() -> bool {
     channel.is_ok()
 }
 
-pub fn sonic_write_game(game: game::Model) -> Result<(), ()> {
+pub fn sonic_write_game(game: game::Model) -> Result<(), String> {
     // PERFORMANCE: 用r2d2重写该部分以加快效率
     let channel = IngestChannel::start(
         settings.get_string("SONICDB_URL").unwrap(),
@@ -36,12 +36,15 @@ pub fn sonic_write_game(game: game::Model) -> Result<(), ()> {
 
     let dest = Dest::col_buc("loonggamedb", "games").obj(game.id);
     let pushed = channel.push(PushRequest::new(dest, game.name));
+    dbg!(&pushed);
+    if pushed.is_err() {
+        return Err(pushed.err().unwrap().to_string());
+    }
 
-    dbg!(pushed);
     Ok(())
 }
 
-pub fn sonic_read_game(name: String) -> Result<Vec<u64>, String> {
+pub fn sonic_read_game(name: String) -> Result<Vec<u32>, String> {
     // PERFORMANCE: 用r2d2重写该部分以加快效率
     let channel = SearchChannel::start(
         settings.get_string("SONICDB_URL").unwrap(),
@@ -58,7 +61,7 @@ pub fn sonic_read_game(name: String) -> Result<Vec<u64>, String> {
     match game {
         Ok(candidates) => Ok(candidates
             .iter()
-            .map(|i| i.parse::<u64>().ok().unwrap())
+            .map(|i| i.parse::<u32>().ok().unwrap())
             .collect()),
         Err(error) => Err("Failed while reading from sonic:".to_owned() + &error.to_string()),
     }

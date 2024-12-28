@@ -99,20 +99,6 @@ pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Model {
-    /// Creates a new [`Model`].
-    fn new(
-        name: String,
-        id: u32,
-        support_level: SupportLevel,
-        compatibility: Compatibility,
-    ) -> Model {
-        Model {
-            name,
-            id,
-            supportlevel: support_level,
-            compat: compatibility,
-        }
-    }
     fn grading(self) -> String {
         let grade: &str;
         match self.supportlevel {
@@ -149,7 +135,6 @@ mod tests {
     use sea_orm::ActiveValue;
     use sea_orm::ConnectionTrait;
     use sea_orm::Database;
-    use sea_orm::TryIntoModel;
 
     use crate::entity::game::CompatibilityLayerItem;
 
@@ -250,6 +235,6 @@ mod tests {
         db.execute(builder.build(&schema.create_table_from_entity(Entity)))
             .await
             .unwrap();
-        let game = game.insert(&db).await.unwrap();
+        let _game = game.insert(&db).await.unwrap();
     }
 }
